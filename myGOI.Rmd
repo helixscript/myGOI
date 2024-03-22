@@ -1,0 +1,242 @@
+---
+fontsize: 12pt
+geometry: margin=0.50in
+subparagraph: yes
+params: 
+    title: "title"
+    date:  "0000-00-00"
+title: "`r params$title`"
+date:  "`r params$date`"
+header-includes:
+   - \usepackage{longtable}
+   - \usepackage[singlelinecheck=false]{caption}
+   - \usepackage{titlesec}
+   - \usepackage{array}
+   - \usepackage{makecell}
+   - \usepackage{booktabs}
+   - \usepackage{float}
+   - \usepackage{pdflscape}
+   - \newcommand{\blandscape}{\begin{landscape}}
+   - \newcommand{\elandscape}{\end{landscape}}
+output:
+  pdf_document:
+    toc: false
+    keep_tex: no
+    latex_engine: xelatex
+---
+\fontsize{12}{16}\selectfont
+\captionsetup[table]{labelformat=empty}
+
+```{r titlePage, echo=FALSE, message=FALSE, warning=FALSE, fig.height=8, cache=TRUE}
+library(dplyr)
+library(kableExtra)
+
+tab <- data.frame(t(data.frame(config)))
+names(tab) <- c('parameter', 'value')
+
+kable(tab, format = "latex", align='l', linesep = "", booktabs = T, row.names = TRUE, longtable = TRUE, caption = '') %>%
+   kable_styling(latex_options = c("hold_position"), font_size = 10)
+```
+
+\newpage
+
+The volcano plot below depicts changes in integration frequency of genes between early 
+and later time points. Integration frequency is defined as the number of unique integration 
+sites near a gene divided by the total number of integration sites recovered within the early or later 
+time periods. The change in integration frequency is defined as (f - fo) / fo where f is the frequency 
+during later time points and fo is the frequency during earlier time points. The significance 
+of enrichment or depletion of integration events for each gene is assessed using Fisher's Exact 
+tests. This plot does not correct for multiple comparisons.
+
+\vspace{0.50cm}
+
+```{r uncorrectedVolcanoPlot, echo=FALSE, message=FALSE, warning=FALSE, fig.height=8, cache=TRUE}
+pValVolcanoPlot
+```
+
+\newpage
+
+Alternatively, the volcano plot can be drawn where the p-values from the multiple Fisher's Exact tests 
+are corrected for multiple comparisons using the Benjamini & Hochberg method.
+
+\vspace{0.50cm}
+
+```{r, correctedVolcanoPlot, echo=FALSE, message=FALSE, warning=FALSE, fig.height=8, cache=TRUE}
+pValAdjVolcanoPlot
+```
+
+\newpage
+
+Genes of interest can be associated with four possible categories:
+```{r, DEAL_table, echo=FALSE, message=FALSE, warning=FALSE, fig.height=8, cache=TRUE}
+tab <- t(tibble('Depleted (D)' = 'Depleted genes show a significant decrease (p < 0.05) in integration frequency at later time points.',
+                'Enriched (E)' = 'Enriched genes show a significant increase (p < 0.05) in integration frequency at later time points.',
+                'Abundant (A)' = 'Abundant genes are genes associated with the top 1% of clonal abundance estimates at later time points.',
+                'Longitudinal (L)' = paste0('Longitudinal genes are genes with at least 3 unique integrations in at least ', 
+                                          config$longitudinal_minNumSubjects, ' subjects recovered after ', config$longitudinal_minTimeDays, ' days.')))        
+
+kable(tab, format = "latex", align='l', linesep = "", booktabs = T, row.names = TRUE, longtable = TRUE, caption = '') %>%
+   kable_styling(font_size = 9)   
+```
+
+The assignment of genes to the Enriched and Depleted categories is dependent on gene specific Fisher's Exact tests (uncorrected p-values $\leq$ 0.05). 
+Genes associated with the Enriched, Abundant, and Longitudinal categories are of particular interest.  
+  
+\vspace{0.5cm}
+
+```{r, DEAL_legend, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+tab <- t(tibble('gene' = 'Gene symbol',
+                'subjects' = 'Total number of subjects with an integration near gene.',
+                'percentChange' = 'Percent increase in integration frequency compared to earlier time period.',
+                'maxAbund' =  paste0('Max. abundance estimate observed > ', config$earlyVsLateCutoffDays, ' days.'),
+                'longitudinalSites' = paste0('Number of integration sites observed >= ', config$longitudinal_minTimeDays, ' days.'),
+                'categories' = 'DEAL categories associated with gene.'))
+
+cat(kable(tab, format = "latex", align='l', linesep = "", booktabs = T, row.names = TRUE) %>%
+   kable_styling(latex_options = c("hold_position"), font_size = 10))
+```
+
+
+```{r, ELA_genes,echo=FALSE, message=FALSE, warning=FALSE}
+tab <- select(subset(k, flag == 'EAL'), gene, subjects, totalSites, percentChange, maxAbund, longitudinalSites, flag)
+tab <- arrange(tab, desc(percentChange))
+tab$percentChange <- sprintf("%.1f%%", tab$percentChange)
+tab <- dplyr::rename(tab, 'categories' = flag)
+
+kable(tab,
+      format = "latex", linesep = "", align='c', booktabs = T, row.names = FALSE, caption = 'Table 1. Genes annotated as EAL.') %>%
+      kable_styling(latex_options = c("hold_position"))
+```
+
+  
+\newpage
+
+Genes associated with the Enriched category have greater integration frequencies at later time points compared to earlier time points
+which suggests that integration near these genes bolsters cell survival.
+
+\vspace{0.25cm}
+
+```{r Table2_legend, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+tab <- t(tibble('gene' = 'Gene symbol',
+                'subjects' = 'Total number of subjects with an integration near gene.',
+                'earlyCount' = paste0('Number of integration sites recovered from earlier time points (<= ', config$earlyVsLateCutoffDays, ' days).'),
+                'lateCount' = paste0('Number of integration sites recovered from later time points (> ', config$earlyVsLateCutoffDays, ' days).'),
+                'percentChange' = paste0('Percent increase in integration frequency compared to earlier time period (> ', config$earlyVsLateCutoffDays, ' days).'),
+                'pVal' = "p-value from Fisher' Exact test.",
+                'categories' = 'DEAL categories associated with gene.'))
+
+kable(tab, format = "latex", align='l', linesep = "", booktabs = T, row.names = TRUE) %>%
+   kable_styling(latex_options = c("hold_position"), font_size = 10)
+```
+
+```{r, E_table, echo=FALSE, message=FALSE, warning=FALSE}
+caption <- 'Table 2. Top 100 enriched genes.'
+if(nrow(k[grepl('E', k$flag),]) <= 100) caption <- 'Table 2. Enriched genes.'
+
+tab <- select(k[grepl('E', k$flag),], gene, subjects, earlyCount, lateCount, percentChange, pVal, flag) %>% arrange(pVal, desc(percentChange)) %>% dplyr::slice(1:100)
+tab$percentChange <- sprintf("%.2f%%", tab$percentChange)
+tab$pVal <- formatC(tab$pVal, format = "e", digits = 2)
+tab <- dplyr::rename(tab, 'categories' = flag)
+
+kable(tab, format = "latex", align='c', linesep = "", booktabs = T, row.names = FALSE, longtable = TRUE, caption = caption) %>%
+   kable_styling(latex_options = c("scale_down", "hold_position", "repeat_header"), font_size = 9) 
+```
+
+\newpage
+
+Genes associated with the Depleted category have lower integration frequencies at later time points compared to earlier time points
+which suggests that integration near these genes may be detrimental to cell survival.
+
+\vspace{0.25cm}
+
+```{r Table3_legend, echo=FALSE, message=FALSE, warning=FALSE}
+tab <- t(tibble('gene' = 'Gene symbol',
+                'subjects' = 'Total number of subjects with an integration near gene.',
+                'earlyCount' = paste0('Number of integration sites recovered from earlier time points (<= ', config$earlyVsLateCutoffDays, ' days).'),
+                'lateCount' = paste0('Number of integration sites recovered from later time points (> ', config$earlyVsLateCutoffDays, ' days).'),
+                'percentChange' = paste0('Percent increase in integration frequency compared to earlier time period (> ', config$earlyVsLateCutoffDays, ' days).'),
+                'pVal' = "p-value from Fisher' Exact test.",
+                'categories' = 'DEAL categories associated with gene.'))
+
+kable(tab, format = "latex", align='l', linesep = "", booktabs = T, row.names = TRUE) %>%
+   kable_styling(latex_options = c("hold_position"), font_size = 10)
+```
+
+```{r, D_table, echo=FALSE, message=FALSE, warning=FALSE}
+caption <- 'Table 3. Top 100 depleated genes.'
+if(nrow(k[grepl('D', k$flag),]) <= 100) caption <- 'Table 3. Depleated genes.'
+
+tab <- select(k[grepl('D', k$flag),], gene, subjects, earlyCount, lateCount, percentChange, pVal, flag) %>% arrange(pVal, percentChange) %>% dplyr::slice(1:100)
+tab$percentChange <- sprintf("%.2f%%", tab$percentChange)
+tab$pVal <- formatC(tab$pVal, format = "e", digits = 2)
+tab <- dplyr::rename(tab, 'categories' = flag)
+
+kable(tab, format = "latex", align='c', linesep = "", booktabs = T, row.names = FALSE, longtable = TRUE, caption = caption) %>%
+   kable_styling(latex_options = c("scale_down", "hold_position", "repeat_header"), font_size = 9) 
+```
+  
+\newpage
+
+Genes associated with the Abundant category reached high levels of clonal abundance measured by the sonic abundance method
+at later time points which suggests that integration near these genes may bolster cell division. 
+
+\vspace{0.25cm}
+
+```{r Table4_legend, echo=FALSE, message=FALSE, warning=FALSE}
+tab <- t(tibble('gene' = 'Gene symbol',
+                'subjects' = 'Total number of subjects with an integration near gene.',
+                'lateCount' = paste0('Number of integration sites recovered after ', config$earlyVsLateCutoffDays, ' days.'),
+                'maxAbund' = paste0('Maximum estimated clonal abundance observered after ', config$earlyVsLateCutoffDays, ' days.'),
+                'maxRelAbund' = paste0('Maximum relative sample clonal abundance observered after ', config$earlyVsLateCutoffDays, ' days.'),
+                'categories' = 'DEAL categories associated with gene.'))
+
+kable(tab, format = "latex", align='l', linesep = "", booktabs = T, row.names = TRUE) %>%
+   kable_styling(latex_options = c("hold_position"), font_size = 10)
+```
+
+```{r, A_table, echo=FALSE, message=FALSE, warning=FALSE}
+caption <- 'Table 4. Top 100 abundant genes.'
+if(nrow(k[grepl('A', k$flag),]) <= 100) caption <- 'Table 4. Abundant genes.'
+
+tab <- select(k[grepl('A', k$flag),], gene, subjects, lateCount, maxAbund, maxRelAbund, flag) %>% arrange(desc(maxAbund)) %>% dplyr::slice(1:100)
+tab$maxRelAbund <- sprintf("%.2f%%", tab$maxRelAbund)
+tab <- dplyr::rename(tab, 'categories' = flag)
+
+
+kable(tab, format = "latex", align='c', linesep = "", booktabs = T, row.names = FALSE, longtable = TRUE, caption = caption) %>%
+   kable_styling(latex_options = c("scale_down", "hold_position", "repeat_header"), font_size = 9) 
+```
+  
+\newpage
+
+Genes are categorized as Longitudinal if $\geq$ `r config$longitudinal_minNumSubjects` different integrations across at least 
+`r config$longitudinal_minNumSubjects` different subjects are observed $\geq$ `r config$longitudinal_minTimeDays` days post-transduction.
+
+\vspace{0.25cm}
+
+```{r, L_legend, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+leg <- t(tibble('totalSites' = 'total number of unique integrations associated with gene.',  
+              'longitudinalSites' = paste0('total number of unique integrations associated with gene recovered >= ', 
+                                           config$longitudinal_minTimeDays, ' days .'),  
+              'longitudinalSubjects' =  paste0('number of subjects associated with integrations associated with gene recovered >= ', 
+                                           config$longitudinal_minTimeDays, ' days.'),    
+              'longitudinalTimePoints' =  paste0('number of time points sampled >= ', 
+                                           config$longitudinal_minTimeDays, ' days.'),    
+              'latestTimePointDays' = 'last time point sampled containing integrations in gene'))  
+
+kable(leg, format = "latex", align='l', linesep = "", booktabs = T, row.names = TRUE, longtable = TRUE, caption = '') %>%
+   kable_styling(latex_options = c("hold_position"), font_size = 10)
+```
+
+```{r, L_table, echo=FALSE, message=FALSE, warning=FALSE}
+caption <- 'Table 5. Top 100 longitudinaly persistant genes.'
+if(nrow(k[grepl('L', k$flag),]) <= 100) caption <- 'Table 5. Longitudinaly persistant genes.'
+
+tab <- select(k[grepl('L', k$flag),], gene, totalSites, longitudinalSites, longitudinalSubjects, longitudinalTimePoints, latestTimePointDays) %>% 
+  arrange(desc(latestTimePointDays), desc(longitudinalSites)) %>% dplyr::slice(1:100)
+
+
+kable(tab, format = "latex", align='c', linesep = "", booktabs = T, row.names = FALSE, longtable = TRUE, caption = caption) %>%
+   kable_styling(latex_options = c("scale_down", "hold_position", "repeat_header"), font_size = 9) 
+```
+  

@@ -1,0 +1,8 @@
+earlyVsLateCutoffDays: 0
+inputDataPath: expandedIntSiteData.tsv.gz
+minSampleAbund: 25
+minGeneSubjects: 2
+maxDistNearestGene: 50000
+longitudinal_minNumSubjects: 3
+longitudinal_minTimeDays: 90
+volcanoPlot_numTopGeneLabels: 12
