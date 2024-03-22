@@ -79,7 +79,11 @@ k <- left_join(ag, bg, by = c('nearestFeature_a' = 'nearestFeature_b')) %>%
      tidyr::drop_na() %>%
      group_by(nearestFeature_a) %>%
      mutate(gene = nearestFeature_a,
-            pVal = fisher.test(matrix(c(a_totalSites - nSites_a, b_totalSites - nSites_b, nSites_a , nSites_b), ncol = 2, byrow = FALSE))$p.value,
+            pVal = fisher.test(matrix(c(a_totalSites - nSites_a, 
+                                        b_totalSites - nSites_b, 
+                                        nSites_a , 
+                                        nSites_b), 
+                                      ncol = 2, byrow = FALSE))$p.value,
             earlyCount = nSites_a,
             lateCount  = nSites_b,
             earlyFreq  = nSites_a / a_totalSites,
@@ -109,6 +113,6 @@ k <- setCategories(k)
 pValVolcanoPlot <- volcanoPlot(k)
 
 rmarkdown::render('myGOI.Rmd',
-                  output_file = 'myGOI2.pdf',
+                  output_file = 'myGOI.pdf',
                   params = list('date'  = format(Sys.Date(), format="%B %d, %Y"),
                                 'title' = 'myGOI report'))

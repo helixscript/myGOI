@@ -5,4 +5,4 @@ minGeneSubjects: 2
 maxDistNearestGene: 50000
 longitudinal_minNumSubjects: 3
 longitudinal_minTimeDays: 90
-volcanoPlot_numTopGeneLabels: 12
+volcanoPlot_numTopGeneLabels: 10

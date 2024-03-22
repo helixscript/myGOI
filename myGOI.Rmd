@@ -7,6 +7,7 @@ params:
     date:  "0000-00-00"
 title: "`r params$title`"
 date:  "`r params$date`"
+author: "John K. Everett, Ph.D."
 header-includes:
    - \usepackage{longtable}
    - \usepackage[singlelinecheck=false]{caption}
@@ -27,14 +28,17 @@ output:
 \fontsize{12}{16}\selectfont
 \captionsetup[table]{labelformat=empty}
 
+\begin{center}
+https://github.com/helixscript/myGOI
+\end{center}
+
 ```{r titlePage, echo=FALSE, message=FALSE, warning=FALSE, fig.height=8, cache=TRUE}
 library(dplyr)
 library(kableExtra)
 
-tab <- data.frame(t(data.frame(config)))
-names(tab) <- c('parameter', 'value')
+tab <- data.frame(parameter = names(config), value = unlist(config))
 
-kable(tab, format = "latex", align='l', linesep = "", booktabs = T, row.names = TRUE, longtable = TRUE, caption = '') %>%
+kable(tab, format = "latex", align='l', linesep = "", booktabs = T, row.names = FALSE, longtable = TRUE, caption = '') %>%
    kable_styling(latex_options = c("hold_position"), font_size = 10)
 ```
 
@@ -85,7 +89,7 @@ Genes associated with the Enriched, Abundant, and Longitudinal categories are of
 \vspace{0.5cm}
 
 ```{r, DEAL_legend, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
-tab <- t(tibble('gene' = 'Gene symbol',
+tab <- t(tibble('gene' = 'Gene symbol.',
                 'subjects' = 'Total number of subjects with an integration near gene.',
                 'percentChange' = 'Percent increase in integration frequency compared to earlier time period.',
                 'maxAbund' =  paste0('Max. abundance estimate observed > ', config$earlyVsLateCutoffDays, ' days.'),
@@ -117,7 +121,7 @@ which suggests that integration near these genes bolsters cell survival.
 \vspace{0.25cm}
 
 ```{r Table2_legend, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
-tab <- t(tibble('gene' = 'Gene symbol',
+tab <- t(tibble('gene' = 'Gene symbol.',
                 'subjects' = 'Total number of subjects with an integration near gene.',
                 'earlyCount' = paste0('Number of integration sites recovered from earlier time points (<= ', config$earlyVsLateCutoffDays, ' days).'),
                 'lateCount' = paste0('Number of integration sites recovered from later time points (> ', config$earlyVsLateCutoffDays, ' days).'),
@@ -150,7 +154,7 @@ which suggests that integration near these genes may be detrimental to cell surv
 \vspace{0.25cm}
 
 ```{r Table3_legend, echo=FALSE, message=FALSE, warning=FALSE}
-tab <- t(tibble('gene' = 'Gene symbol',
+tab <- t(tibble('gene' = 'Gene symbol.',
                 'subjects' = 'Total number of subjects with an integration near gene.',
                 'earlyCount' = paste0('Number of integration sites recovered from earlier time points (<= ', config$earlyVsLateCutoffDays, ' days).'),
                 'lateCount' = paste0('Number of integration sites recovered from later time points (> ', config$earlyVsLateCutoffDays, ' days).'),
@@ -183,7 +187,7 @@ at later time points which suggests that integration near these genes may bolste
 \vspace{0.25cm}
 
 ```{r Table4_legend, echo=FALSE, message=FALSE, warning=FALSE}
-tab <- t(tibble('gene' = 'Gene symbol',
+tab <- t(tibble('gene' = 'Gene symbol.',
                 'subjects' = 'Total number of subjects with an integration near gene.',
                 'lateCount' = paste0('Number of integration sites recovered after ', config$earlyVsLateCutoffDays, ' days.'),
                 'maxAbund' = paste0('Maximum estimated clonal abundance observered after ', config$earlyVsLateCutoffDays, ' days.'),
@@ -215,14 +219,15 @@ Genes are categorized as Longitudinal if $\geq$ `r config$longitudinal_minNumSub
 \vspace{0.25cm}
 
 ```{r, L_legend, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
-leg <- t(tibble('totalSites' = 'total number of unique integrations associated with gene.',  
-              'longitudinalSites' = paste0('total number of unique integrations associated with gene recovered >= ', 
-                                           config$longitudinal_minTimeDays, ' days .'),  
-              'longitudinalSubjects' =  paste0('number of subjects associated with integrations associated with gene recovered >= ', 
+leg <- t(tibble('gene' = 'Gene symbol.',
+                'totalSites' = 'total number of unique integrations associated with gene.',  
+                'longitudinalSites' = paste0('total number of unique integrations associated with gene recovered >= ', 
+                                           config$longitudinal_minTimeDays, ' days.'),  
+                'longitudinalSubjects' =  paste0('number of subjects associated with integrations associated with gene recovered >= ', 
                                            config$longitudinal_minTimeDays, ' days.'),    
-              'longitudinalTimePoints' =  paste0('number of time points sampled >= ', 
+                'longitudinalTimePoints' =  paste0('number of time points sampled >= ', 
                                            config$longitudinal_minTimeDays, ' days.'),    
-              'latestTimePointDays' = 'last time point sampled containing integrations in gene'))  
+                'latestTimePointDays' = 'last time point sampled containing integrations in gene.'))  
 
 kable(leg, format = "latex", align='l', linesep = "", booktabs = T, row.names = TRUE, longtable = TRUE, caption = '') %>%
    kable_styling(latex_options = c("hold_position"), font_size = 10)
