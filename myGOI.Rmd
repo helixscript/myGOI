@@ -3,11 +3,12 @@ fontsize: 12pt
 geometry: margin=0.50in
 subparagraph: yes
 params: 
-    title: "title"
-    date:  "0000-00-00"
-title: "`r params$title`"
-date:  "`r params$date`"
-author: "John K. Everett, Ph.D."
+    title:  "title"
+    date:   "0000-00-00"
+    author: "None"
+title:  "`r params$title`"
+date:   "`r params$date`"
+author: "`r params$author`"
 header-includes:
    - \usepackage{longtable}
    - \usepackage[singlelinecheck=false]{caption}
@@ -15,6 +16,8 @@ header-includes:
    - \usepackage{array}
    - \usepackage{makecell}
    - \usepackage{booktabs}
+   - \usepackage{colortbl}
+   - \usepackage{xunicode}
    - \usepackage{float}
    - \usepackage{pdflscape}
    - \newcommand{\blandscape}{\begin{landscape}}
@@ -35,11 +38,6 @@ https://github.com/helixscript/myGOI
 ```{r titlePage, echo=FALSE, message=FALSE, warning=FALSE, fig.height=8, cache=TRUE}
 library(dplyr)
 library(kableExtra)
-
-tab <- data.frame(parameter = names(config), value = unlist(config))
-
-kable(tab, format = "latex", align='l', linesep = "", booktabs = T, row.names = FALSE, longtable = TRUE, caption = '') %>%
-   kable_styling(latex_options = c("hold_position"), font_size = 10)
 ```
 
 \newpage
@@ -70,49 +68,85 @@ pValAdjVolcanoPlot
 ```
 
 \newpage
-
 Genes of interest can be associated with four possible categories:
-```{r, DEAL_table, echo=FALSE, message=FALSE, warning=FALSE, fig.height=8, cache=TRUE}
-tab <- t(tibble('Depleted (D)' = 'Depleted genes show a significant decrease (p < 0.05) in integration frequency at later time points.',
-                'Enriched (E)' = 'Enriched genes show a significant increase (p < 0.05) in integration frequency at later time points.',
-                'Abundant (A)' = 'Abundant genes are genes associated with the top 1% of clonal abundance estimates at later time points.',
-                'Longitudinal (L)' = paste0('Longitudinal genes are genes with at least 3 unique integrations in at least ', 
-                                          config$longitudinal_minNumSubjects, ' subjects recovered after ', config$longitudinal_minTimeDays, ' days.')))        
 
-kable(tab, format = "latex", align='l', linesep = "", booktabs = T, row.names = TRUE, longtable = TRUE, caption = '') %>%
-   kable_styling(font_size = 9)   
+```{r, DEAL_table, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+caption <- ''
+tab <- tibble(class = c('Depleted (D)', 'Enriched (E)', 'Abundant (A)', 'Longitudinal (L)'),
+              desc  = c('Depleted genes show a significant decrease (p $\\leq$ 0.05) in integration frequency at later time points.',
+                        'Enriched genes show a significant increase (p $\\leq$ 0.05) in integration frequency at later time points.',
+                        'Abundant genes are genes associated with the top 1\\% of clonal abundance estimates at later time points.',
+                        paste0('Longitudinal genes are genes with $\\geq$ ', config$longitudinal_minNumSites, ' unique integrations from $\\geq$ ',                                              config$longitudinal_minNumSubjects, ' patients recovered $\\geq$ ', config$longitudinal_minTimeDays, ' days post-transduction.')))
+
+kable(tab, "latex", align="rl", linesep = "", booktabs=T, escape = F, col.names = NULL, caption = caption) %>%
+  kable_styling(latex_options = c("hold_position"), font_size = 9)
 ```
 
-The assignment of genes to the Enriched and Depleted categories is dependent on gene specific Fisher's Exact tests (uncorrected p-values $\leq$ 0.05). 
-Genes associated with the Enriched, Abundant, and Longitudinal categories are of particular interest.  
+The assignment of genes to the Enriched and Depleted categories is dependent on gene specific Fisher's Exact tests 
+(uncorrected p-values $\leq$ 0.05). The plot below depicts the number of genes associated with more than one category.  
   
-\vspace{0.5cm}
+\vspace{0.25cm}
 
-```{r, DEAL_legend, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
-tab <- t(tibble('gene' = 'Gene symbol.',
-                'subjects' = 'Total number of subjects with an integration near gene.',
-                'percentChange' = 'Percent increase in integration frequency compared to earlier time period.',
-                'maxAbund' =  paste0('Max. abundance estimate observed > ', config$earlyVsLateCutoffDays, ' days.'),
-                'longitudinalSites' = paste0('Number of integration sites observed >= ', config$longitudinal_minTimeDays, ' days.'),
-                'categories' = 'DEAL categories associated with gene.'))
-
-cat(kable(tab, format = "latex", align='l', linesep = "", booktabs = T, row.names = TRUE) %>%
-   kable_styling(latex_options = c("hold_position"), font_size = 10))
+```{r, upsetPlot, echo=FALSE, message=FALSE, warning=FALSE, fig.height=5, cache=FALSE}
+upSetPlot
 ```
 
+\newpage
+
+The table below contains gene that have been associated with the Enriched, Abundant, and Longintudinal
+categories. These genes are of particular interest since three separate metrics suggests that integration 
+near these genes may bolster persistence over time.  
+
+\vspace{0.25cm}
 
 ```{r, ELA_genes,echo=FALSE, message=FALSE, warning=FALSE}
-tab <- select(subset(k, flag == 'EAL'), gene, subjects, totalSites, percentChange, maxAbund, longitudinalSites, flag)
+tab <- select(subset(k, flag == 'EAL'), gene, subjects, totalSites, percentChange, maxAbund, longitudinalSites, oncoGene, flag)
 tab <- arrange(tab, desc(percentChange))
 tab$percentChange <- sprintf("%.1f%%", tab$percentChange)
 tab <- dplyr::rename(tab, 'categories' = flag)
 
 kable(tab,
       format = "latex", linesep = "", align='c', booktabs = T, row.names = FALSE, caption = 'Table 1. Genes annotated as EAL.') %>%
-      kable_styling(latex_options = c("hold_position"))
+      kable_styling(latex_options = c("hold_position"), font_size = 10)
 ```
 
+\newpage
+
+The degree of integration near suspected oncogenes is important given that genotoxity 
+through disruption of oncogene transcription units or over expression via promoter insertion 
+can potentially lead to adverse events. Here we test for significance of overlap between 
+select oncogene lists and genes near recovered integration events. Test data sets include:  
+
+\vspace{0.25cm}
+
+**allOnco** [`r ppNum(length(oncoGeneLists[['allOnco']]))` genes [(link)](http://www.bushmanlab.org/links/genelists)]: A comprehensive list of oncogenes compiled from multiple projects and consortia.   
   
+\vspace{0.25cm}
+  
+**cosmic** [`r ppNum(length(oncoGeneLists[['cosmic']]))` genes [(link)](https://www.sanger.ac.uk/tool/cosmic)]:  "Catalogue Of Somatic Mutations In Cancer"  is an expert-curated database 
+encompassing the wide variety of somatic mutation mechanisms causing human cancer.  
+  
+\vspace{0.25cm}
+  
+**cosmic_tsg** [`r ppNum(length(oncoGeneLists[['cosmic_tsg']]))` genes]: This gene list is a subset of the cosmic gene list annotated as tumor suppressors.   
+  
+\vspace{0.25cm}
+
+Table 2 summarizes the size of each criteria gene list identified by the various methods.
+Significance of overlap between gene lists are displayed by asterisks before the percent of genes identified from the
+criteria list which overlap with the column specified group. The asterisk to the left of the “/” indicates a
+p-value below 0.05 before multiple comparison corrections, while an asterisk to the right of the “/” indicates
+a p-value below 0.05 after multiple comparison corrections. Significance was tested using Fisher's Exact
+test and multiple comparison corrections were made using a Benjamini-Hochberg (FDR) method for each
+criteria based list.
+
+\vspace{0.50cm}
+
+```{r, oncoGeneTable, echo=FALSE, message=FALSE, warning=FALSE}
+kable(geneListCompTab, format = "latex", align='l', linesep = "", booktabs = T, row.names = FALSE, caption = 'Table 2.') %>%
+   kable_styling(latex_options = c("hold_position"), font_size = 12)
+```
+
 \newpage
 
 Genes associated with the Enriched category have greater integration frequencies at later time points compared to earlier time points
@@ -121,29 +155,38 @@ which suggests that integration near these genes bolsters cell survival.
 \vspace{0.25cm}
 
 ```{r Table2_legend, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
-tab <- t(tibble('gene' = 'Gene symbol.',
-                'subjects' = 'Total number of subjects with an integration near gene.',
-                'earlyCount' = paste0('Number of integration sites recovered from earlier time points (<= ', config$earlyVsLateCutoffDays, ' days).'),
-                'lateCount' = paste0('Number of integration sites recovered from later time points (> ', config$earlyVsLateCutoffDays, ' days).'),
-                'percentChange' = paste0('Percent increase in integration frequency compared to earlier time period (> ', config$earlyVsLateCutoffDays, ' days).'),
-                'pVal' = "p-value from Fisher' Exact test.",
-                'categories' = 'DEAL categories associated with gene.'))
+caption <- ''
+tab <- tibble(class = c('gene', 'subjects', 'earlyCount', 'lateCount', 'percentChange', 'pVal', 'pVal.adj', 'oncoGene', 'categories'),
+              desc = c('Gene symbol.',
+                       'Total number of subjects with an integration near gene.',
+                        paste0('Number of integration sites recovered from earlier time points ($\\leq$ ', config$earlyVsLateCutoffDays, ' days).'),
+                        paste0('Number of integration sites recovered from later time points (> ', config$earlyVsLateCutoffDays, ' days).'),
+                        paste0('Percent increase in integration frequency compared to earlier time period (> ', config$earlyVsLateCutoffDays, ' days).'),
+                        "p-value from Fisher's Exact test.",
+                        "BH corrected p-value from Fisher's Exact test.",
+                        "Gene is found in a broad lists of oncogenes.",
+                        "DEAL categories associated with gene."))
 
-kable(tab, format = "latex", align='l', linesep = "", booktabs = T, row.names = TRUE) %>%
-   kable_styling(latex_options = c("hold_position"), font_size = 10)
+kable(tab, "latex", align="rl", linesep = "", booktabs=T, escape = F, col.names = NULL, caption = caption) %>%
+  kable_styling(latex_options = c("hold_position"), font_size = 10)
 ```
 
-```{r, E_table, echo=FALSE, message=FALSE, warning=FALSE}
-caption <- 'Table 2. Top 100 enriched genes.'
-if(nrow(k[grepl('E', k$flag),]) <= 100) caption <- 'Table 2. Enriched genes.'
 
-tab <- select(k[grepl('E', k$flag),], gene, subjects, earlyCount, lateCount, percentChange, pVal, flag) %>% arrange(pVal, desc(percentChange)) %>% dplyr::slice(1:100)
-tab$percentChange <- sprintf("%.2f%%", tab$percentChange)
-tab$pVal <- formatC(tab$pVal, format = "e", digits = 2)
+```{r, E_table, echo=FALSE, message=FALSE, warning=FALSE}
+caption <- 'Table 3. Top 100 enriched genes. p-Values are marked with an * if $\\leq$ 0.05.'
+if(nrow(k[grepl('E', k$flag),]) <= 100) caption <- 'Table 3. Enriched genes. p-Values are marked with an * if $\\leq$ 0.05.'
+
+tab <- select(k[grepl('E', k$flag),], gene, subjects, earlyCount, lateCount, percentChange, pVal, pVal.adj, oncoGene, flag) %>% arrange(pVal, desc(percentChange)) %>% dplyr::slice(1:100)
+tab$percentChange <- sprintf("%.2f\\%%", tab$percentChange)
+
+tab$pVal <- ifelse(tab$pVal <= 0.05, paste0(formatC(tab$pVal, format = "e", digits = 1), ' *'), 
+                   formatC(tab$pVal, format = "e", digits = 1))
+tab$pVal.adj <- ifelse(tab$pVal.adj <= 0.05, paste0(formatC(tab$pVal.adj, format = "e", digits = 1), ' *'), 
+                      formatC(tab$pVal.adj, format = "e", digits = 1))
+
 tab <- dplyr::rename(tab, 'categories' = flag)
 
-kable(tab, format = "latex", align='c', linesep = "", booktabs = T, row.names = FALSE, longtable = TRUE, caption = caption) %>%
-   kable_styling(latex_options = c("scale_down", "hold_position", "repeat_header"), font_size = 9) 
+kable(tab, format = "latex", align='cccccllc', linesep = "", booktabs = T, escape = F, row.names = FALSE, longtable = TRUE, caption = caption) %>% kable_styling(latex_options = c("scale_down", "hold_position", "repeat_header"), font_size = 9)
 ```
 
 \newpage
@@ -154,90 +197,105 @@ which suggests that integration near these genes may be detrimental to cell surv
 \vspace{0.25cm}
 
 ```{r Table3_legend, echo=FALSE, message=FALSE, warning=FALSE}
-tab <- t(tibble('gene' = 'Gene symbol.',
-                'subjects' = 'Total number of subjects with an integration near gene.',
-                'earlyCount' = paste0('Number of integration sites recovered from earlier time points (<= ', config$earlyVsLateCutoffDays, ' days).'),
-                'lateCount' = paste0('Number of integration sites recovered from later time points (> ', config$earlyVsLateCutoffDays, ' days).'),
-                'percentChange' = paste0('Percent increase in integration frequency compared to earlier time period (> ', config$earlyVsLateCutoffDays, ' days).'),
-                'pVal' = "p-value from Fisher' Exact test.",
-                'categories' = 'DEAL categories associated with gene.'))
+caption <- ''
+tab <- tibble(class = c('gene', 'subjects', 'earlyCount', 'lateCount', 'percentChange', 'pVal', 'pVal.adj', 'oncoGene', 'categories'),
+              desc = c('Gene symbol.',
+                       'Total number of subjects with an integration near gene.',
+                        paste0('Number of integration sites recovered from earlier time points ($\\leq$ ', config$earlyVsLateCutoffDays, ' days).'),
+                        paste0('Number of integration sites recovered from later time points (> ', config$earlyVsLateCutoffDays, ' days).'),
+                        paste0('Percent increase in integration frequency compared to earlier time period (> ', config$earlyVsLateCutoffDays, ' days).'),
+                        "p-value from Fisher's Exact test.",
+                        "BH corrected p-value from Fisher's Exact test.",
+                        "Gene is found in a broad lists of oncogenes.",
+                        "DEAL categories associated with gene."))
 
-kable(tab, format = "latex", align='l', linesep = "", booktabs = T, row.names = TRUE) %>%
-   kable_styling(latex_options = c("hold_position"), font_size = 10)
+kable(tab, "latex", align="rl", linesep = "", booktabs=T, escape = F, col.names = NULL, caption = caption) %>%
+  kable_styling(latex_options = c("hold_position"), font_size = 10)
 ```
 
 ```{r, D_table, echo=FALSE, message=FALSE, warning=FALSE}
-caption <- 'Table 3. Top 100 depleated genes.'
-if(nrow(k[grepl('D', k$flag),]) <= 100) caption <- 'Table 3. Depleated genes.'
+caption <- 'Table 4. Top 100 depleated genes. p-Values are marked with an * if $\\leq$ 0.05.'
+if(nrow(k[grepl('D', k$flag),]) <= 100) caption <- 'Table 4. Depleated genes. p-Values are marked with an * if $\\leq$ 0.05.'
 
-tab <- select(k[grepl('D', k$flag),], gene, subjects, earlyCount, lateCount, percentChange, pVal, flag) %>% arrange(pVal, percentChange) %>% dplyr::slice(1:100)
-tab$percentChange <- sprintf("%.2f%%", tab$percentChange)
-tab$pVal <- formatC(tab$pVal, format = "e", digits = 2)
+tab <- select(k[grepl('D', k$flag),], gene, subjects, earlyCount, lateCount, percentChange, pVal, pVal.adj, oncoGene, flag) %>% arrange(pVal, percentChange) %>% dplyr::slice(1:100)
+tab$percentChange <- sprintf("%.2f\\%%", tab$percentChange)
+tab$pVal <- ifelse(tab$pVal <= 0.05, paste0(formatC(tab$pVal, format = "e", digits = 1), ' *'), 
+                   formatC(tab$pVal, format = "e", digits = 1))
+tab$pVal.adj <- ifelse(tab$pVal.adj <= 0.05, paste0(formatC(tab$pVal.adj, format = "e", digits = 1), ' *'), 
+                      formatC(tab$pVal.adj, format = "e", digits = 1))
 tab <- dplyr::rename(tab, 'categories' = flag)
 
-kable(tab, format = "latex", align='c', linesep = "", booktabs = T, row.names = FALSE, longtable = TRUE, caption = caption) %>%
+kable(tab, format = "latex", align='c', linesep = "", booktabs = T, escape = F, row.names = FALSE, longtable = TRUE, caption = caption) %>%
    kable_styling(latex_options = c("scale_down", "hold_position", "repeat_header"), font_size = 9) 
 ```
   
 \newpage
 
 Genes associated with the Abundant category reached high levels of clonal abundance measured by the sonic abundance method
-at later time points which suggests that integration near these genes may bolster cell division. 
+at later time points which suggests that integration near these genes may bolster cell division. For this analysis, the 
+threshold for inclusion is an estimated abundances $\geq$ `r currentAbundantCategoryThreshold` cells.
 
 \vspace{0.25cm}
 
 ```{r Table4_legend, echo=FALSE, message=FALSE, warning=FALSE}
-tab <- t(tibble('gene' = 'Gene symbol.',
-                'subjects' = 'Total number of subjects with an integration near gene.',
-                'lateCount' = paste0('Number of integration sites recovered after ', config$earlyVsLateCutoffDays, ' days.'),
-                'maxAbund' = paste0('Maximum estimated clonal abundance observered after ', config$earlyVsLateCutoffDays, ' days.'),
-                'maxRelAbund' = paste0('Maximum relative sample clonal abundance observered after ', config$earlyVsLateCutoffDays, ' days.'),
-                'categories' = 'DEAL categories associated with gene.'))
+caption <- ''
+tab <- tibble(class = c('gene', 'subjects', 'lateCount', 'maxAbund', 'maxRelAbund', 'oncoGene', 'categories'),
+              desc = c('Gene symbol.',
+                       'Total number of subjects with an integration near gene.',
+                        paste0('Number of integration sites recovered from earlier time points ($\\leq$ ', config$earlyVsLateCutoffDays, ' days).'),
+                        paste0('Maximum estimated clonal abundance observered > ', config$earlyVsLateCutoffDays, ' days.'),
+                        paste0('Maximum relative sample clonal abundance observered > ', config$earlyVsLateCutoffDays, ' days.'),
+                        "Gene is found in a broad lists of oncogenes.",
+                        "DEAL categories associated with gene."))
 
-kable(tab, format = "latex", align='l', linesep = "", booktabs = T, row.names = TRUE) %>%
-   kable_styling(latex_options = c("hold_position"), font_size = 10)
+kable(tab, "latex", align="rl", linesep = "", booktabs=T, escape = F, col.names = NULL, caption = caption) %>%
+  kable_styling(latex_options = c("hold_position"), font_size = 10)
 ```
 
 ```{r, A_table, echo=FALSE, message=FALSE, warning=FALSE}
-caption <- 'Table 4. Top 100 abundant genes.'
-if(nrow(k[grepl('A', k$flag),]) <= 100) caption <- 'Table 4. Abundant genes.'
+caption <- 'Table 5. Top 100 abundant genes.'
+if(nrow(k[grepl('A', k$flag),]) <= 100) caption <- 'Table 5. Abundant genes.'
 
-tab <- select(k[grepl('A', k$flag),], gene, subjects, lateCount, maxAbund, maxRelAbund, flag) %>% arrange(desc(maxAbund)) %>% dplyr::slice(1:100)
-tab$maxRelAbund <- sprintf("%.2f%%", tab$maxRelAbund)
+tab <- select(k[grepl('A', k$flag),], gene, subjects, lateCount, maxAbund, maxRelAbund, oncoGene, flag) %>% arrange(desc(maxAbund)) %>% dplyr::slice(1:100)
+tab$maxRelAbund <- sprintf("%.2f\\%%", tab$maxRelAbund)
 tab <- dplyr::rename(tab, 'categories' = flag)
 
 
-kable(tab, format = "latex", align='c', linesep = "", booktabs = T, row.names = FALSE, longtable = TRUE, caption = caption) %>%
+kable(tab, format = "latex", align='c', linesep = "", booktabs = T, escape = F, row.names = FALSE, longtable = TRUE, caption = caption) %>%
    kable_styling(latex_options = c("scale_down", "hold_position", "repeat_header"), font_size = 9) 
 ```
   
 \newpage
 
-Genes are categorized as Longitudinal if $\geq$ `r config$longitudinal_minNumSubjects` different integrations across at least 
+Genes are categorized as Longitudinal if $\geq$ `r config$longitudinal_minNumSubjects` different integrations across $\geq$ 
 `r config$longitudinal_minNumSubjects` different subjects are observed $\geq$ `r config$longitudinal_minTimeDays` days post-transduction.
 
 \vspace{0.25cm}
 
 ```{r, L_legend, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
-leg <- t(tibble('gene' = 'Gene symbol.',
-                'totalSites' = 'total number of unique integrations associated with gene.',  
-                'longitudinalSites' = paste0('total number of unique integrations associated with gene recovered >= ', 
+caption <- ''
+tab <- tibble(class = c('gene', 'totalSites', 'longitudinalSites', 'longitudinalSubjects', 'longitudinalTimePoints', 'latestTimePointDays', 'oncoGene', 'categories'),
+              desc = c('Gene symbol.',
+                       'Total number of unique integrations associated with gene.',  
+                        paste0('Total number of unique integrations associated with gene recovered $\\geq$ ', 
                                            config$longitudinal_minTimeDays, ' days.'),  
-                'longitudinalSubjects' =  paste0('number of subjects associated with integrations associated with gene recovered >= ', 
-                                           config$longitudinal_minTimeDays, ' days.'),    
-                'longitudinalTimePoints' =  paste0('number of time points sampled >= ', 
-                                           config$longitudinal_minTimeDays, ' days.'),    
-                'latestTimePointDays' = 'last time point sampled containing integrations in gene.'))  
+                        paste0('Number of subjects associated with integrations associated with gene recovered $\\geq$ ', 
+                                           config$longitudinal_minTimeDays, ' days.'), 
+                        paste0('Number of time points sampled $\\geq$ ', 
+                                           config$longitudinal_minTimeDays, ' days.'),
+                        "Longest time point sampled.",
+                        "Gene is found in a broad lists of oncogenes.",
+                        "DEAL categories associated with gene."))
 
-kable(leg, format = "latex", align='l', linesep = "", booktabs = T, row.names = TRUE, longtable = TRUE, caption = '') %>%
-   kable_styling(latex_options = c("hold_position"), font_size = 10)
+kable(tab, "latex", align="rl", linesep = "", booktabs=T, escape = F, col.names = NULL, caption = caption) %>%
+  kable_styling(latex_options = c("hold_position"), font_size = 10)
 ```
 
 ```{r, L_table, echo=FALSE, message=FALSE, warning=FALSE}
-caption <- 'Table 5. Top 100 longitudinaly persistant genes.'
-if(nrow(k[grepl('L', k$flag),]) <= 100) caption <- 'Table 5. Longitudinaly persistant genes.'
+caption <- 'Table 6. Top 100 longitudinaly persistant genes.'
+if(nrow(k[grepl('L', k$flag),]) <= 100) caption <- 'Table 6. Longitudinaly persistant genes.'
 
-tab <- select(k[grepl('L', k$flag),], gene, totalSites, longitudinalSites, longitudinalSubjects, longitudinalTimePoints, latestTimePointDays) %>% 
+tab <- select(k[grepl('L', k$flag),], gene, totalSites, longitudinalSites, longitudinalSubjects, longitudinalTimePoints, latestTimePointDays, oncoGene) %>% 
   arrange(desc(latestTimePointDays), desc(longitudinalSites)) %>% dplyr::slice(1:100)
 
 
@@ -245,3 +303,59 @@ kable(tab, format = "latex", align='c', linesep = "", booktabs = T, row.names = 
    kable_styling(latex_options = c("scale_down", "hold_position", "repeat_header"), font_size = 9) 
 ```
   
+\newpage
+
+\begin{landscape}
+
+Genes associated with both the Enriched and Longitudinal categories are list below.
+
+\vspace{0.25cm}
+
+```{r Table6_legend, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+tab <- t(tibble('gene' = 'Gene symbol.',
+                'subjects' = 'Total number of subjects with an integration near gene.',
+                'earlyCount' = paste0('Number of integration sites recovered from earlier time points (<= ', config$earlyVsLateCutoffDays, ' days).'),
+                'lateCount' = paste0('Number of integration sites recovered from later time points (> ', config$earlyVsLateCutoffDays, ' days).'),
+                'percentChange' = paste0('Percent increase in integration frequency compared to earlier time period (> ', config$earlyVsLateCutoffDays, ' days).'),
+                'pVal' = "p-value from Fisher's Exact test.",
+                'pVal.adj' = "BH corrected p-value from Fisher's Exact test.",
+                'longitudinalSites' = paste0('total number of unique integrations associated with gene recovered >= ', config$longitudinal_minTimeDays, ' days.'),  
+                'longitudinalSubjects' =  paste0('number of subjects associated with integrations associated with gene recovered >= ', config$longitudinal_minTimeDays, ' days.'),     
+                'latestTimePointDays' = 'last time point sampled containing integrations in gene.',
+                'categories' = 'DEAL categories associated with gene.'))
+
+kable(tab, format = "latex", align='l', linesep = "", booktabs = T, row.names = TRUE) %>%
+   kable_styling(latex_options = c("hold_position"), font_size = 10)
+```
+
+
+```{r, EL_table, echo=FALSE, message=FALSE, warning=FALSE, cache=FALSE}
+caption <- 'Table 7. Top 100 enriched and longitudinal genes. p-Values are marked with an * if $\\leq$ 0.05.'
+if(nrow(k[k$flag == 'EL',]) <= 100) caption <- 'Table 7. Enriched and longitudinal genes. p-Values are marked with an * if $\\leq$ 0.05.'
+
+tab <- select(k[k$flag == 'EL',], gene, subjects, earlyCount, lateCount, percentChange, pVal, pVal.adj,
+              longitudinalSites, longitudinalSubjects, latestTimePointDays, oncoGene, flag) %>% arrange(pVal, desc(percentChange)) %>% dplyr::slice(1:100)
+
+tab$percentChange <- sprintf("%.2f\\%%", tab$percentChange)
+tab$pVal <- ifelse(tab$pVal <= 0.05, paste0(formatC(tab$pVal, format = "e", digits = 1), ' *'), 
+                   formatC(tab$pVal, format = "e", digits = 1))
+tab$pVal.adj <- ifelse(tab$pVal.adj <= 0.05, paste0(formatC(tab$pVal.adj, format = "e", digits = 1), ' *'), 
+                      formatC(tab$pVal.adj, format = "e", digits = 1))
+tab <- dplyr::rename(tab, 'categories' = flag)
+
+kable(tab, format = "latex", align='c', linesep = "", booktabs = T, escape = F, row.names = FALSE, longtable = TRUE, caption = caption) %>%
+   kable_styling(latex_options = c("scale_down", "repeat_header", "hold_position"), font_size = 8) 
+```
+
+\end{landscape}
+
+\newpage
+
+Software parameters.
+
+```{r lastPage, echo=FALSE, message=FALSE, warning=FALSE, fig.height=8, cache=TRUE}
+tab <- data.frame(parameter = names(config), value = unlist(config))
+
+kable(tab, format = "latex", align='l', linesep = "", booktabs = T, row.names = FALSE, longtable = TRUE, caption = '') %>%
+   kable_styling(latex_options = c("hold_position"), font_size = 10)
+```

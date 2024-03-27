@@ -1,16 +1,125 @@
+
+ppNum <- function (n) format(n, big.mark = ",", scientific = FALSE, trim = TRUE)
+
+loadHGNCprev <- function(){
+  HGNC <- readr::read_tsv('data/HGNC_symbols.tsv', col_types = cols())
+  
+  HGNC <- select(HGNC, `Approved symbol`, `Previous symbols`)
+  names(HGNC) <- c('symbol', 'prev')
+  
+  HGNC$symbol <- toupper(HGNC$symbol)
+  
+  HGNC$prev <- toupper(gsub('\\s', '', HGNC$prev))
+  
+  HGNC <- distinct(HGNC)
+  
+  # Create a table that only has alternative symbols.
+  mutate(HGNC, prev = strsplit(prev, ",")) %>%
+  tidyr::unnest(prev) %>%
+  tidyr::drop_na() %>%
+  distinct() %>%
+  as.data.table()
+}
+
+
+loadHGNCfull <- function(){
+  HGNC <- readr::read_tsv('data/HGNC_symbols.tsv', col_types = cols())
+  
+  HGNC <- select(HGNC, `Approved symbol`, `Previous symbols`, Status, `Alias symbols`)
+  names(HGNC) <- c('symbol', 'prevSymbols', 'status', 'aliasSymbols')
+  
+  HGNC$symbol <- toupper(HGNC$symbol)
+  HGNC$prevSymbols <- toupper(gsub('\\s', '', HGNC$prevSymbols))
+  HGNC$aliasSymbols <- toupper(gsub('\\s', '', HGNC$aliasSymbols))
+
+  as.data.table(distinct(HGNC))
+}
+
+
+buildUpSetPlot <- function(){
+  z <- bind_rows(lapply(split(k, 1:nrow(k)), function(x){
+         if(x$flag == 'none') return(tibble())
+         o <- tibble('gene' = x$gene, 'Depleated' = 0, 'Enriched' = 0, 'Abundant' = 0, 'Longintudinal' = 0)
+         if(grepl('D', x$flag)) o$Depleated <- 1
+         if(grepl('E', x$flag)) o$Enriched <- 1
+         if(grepl('A', x$flag)) o$Abundant <- 1
+         if(grepl('L', x$flag)) o$Longintudinal <- 1
+         o
+  })) %>% as.data.frame()
+  rownames(z) <- z$gene
+  z$gene <- NULL
+        
+  upset(z, order.by="freq", text.scale = 1.2, point.size = 3)
+}
+
+
+geneListTests <- function(){
+  bind_rows(lapply(c('D', 'E', 'A', 'L'), function(x){
+    a <- k[grepl(x, k$flag),]
+    b <- k[! grepl(x, k$flag),]
+    
+    bind_cols(tibble('Class' = x), mapply(function(genes, label){
+      o <- tibble(
+                  enriched = (sum(a$gene %in% genes) / n_distinct(a$gene)) > (sum(b$gene %in% genes) / n_distinct(b$gene)),
+                  percentGenes = sum(a$gene %in% genes) / n_distinct(a$gene),
+                  pval = fisher.test(matrix(c(sum(a$gene %in% genes),
+                                              sum(! a$gene %in% genes),
+                                              sum(b$gene %in% genes),
+                                              sum(! b$gene %in% genes)), ncol = 2, byrow = FALSE))$p.val)
+                  
+      names(o) <- c(paste0(label, '__enriched'), paste0(label, '__percentGenes'), paste0(label, '__pval'))
+      o
+      
+    }, oncoGeneLists, names(oncoGeneLists), SIMPLIFY = FALSE))
+  }))
+}
+
 logValue <- function(x) log2(abs(x)) * ifelse(x < 0, -1, 1)
+
+
+updateGeneSymbols <- function(g){
+  g <- toupper(gsub('\\s', '', g))
+  g2 <- g
+  for(gene in unique(g)){
+    if(gene %in% HGNCprev$prev & ! gene %in% HGNCprev$symbol){
+      o <- HGNCprev[prev == gene]
+      if(nrow(o) == 1){
+        message(gene, '-> ', o$symbol)
+        g2[g2 == gene] <- o$symbol
+      }
+    }
+  }
+  
+  message(sprintf("%.2f%%", (sum(g != g2) / length(g))*100), ' gene symbols updated.')
+  g2
+}
 
 setCategories <- function(k){
   depletedGenes <- subset(k, percentChange <= 0 & pVal <= 0.05)
   enrichedGenes <- subset(k, percentChange > 0 & pVal <= 0.05)
-  abundantGenes <- subset(k, maxAbund >= arrange(k, desc(maxAbund))[ceiling(nrow(k)*0.01),]$maxAbund)
+  
+  currentAbundantCategoryThreshold <<- arrange(k, desc(maxAbund))[ceiling(nrow(k)*0.01),]$maxAbund
+  
+  abundantGenes <- subset(k, maxAbund >= currentAbundantCategoryThreshold)
 
   k$flag <- ''
-  k[k$percentChange <= 0 & k$gene %in% depletedGenes$gene,]$flag <- paste0(k[k$percentChange <= 0 & k$gene %in% depletedGenes$gene,]$flag, 'D')
-  k[k$percentChange > 0  & k$gene %in% enrichedGenes$gene,]$flag <- paste0(k[k$percentChange > 0  & k$gene %in% enrichedGenes$gene,]$flag, 'E')
+  k[k$percentChange <= 0 & 
+    k$gene %in% depletedGenes$gene,]$flag <- paste0(k[k$percentChange <= 0 & 
+                                                        k$gene %in% depletedGenes$gene,]$flag, 'D')
+  
+  k[k$percentChange > 0 & 
+    k$gene %in% enrichedGenes$gene,]$flag <- paste0(k[k$percentChange > 0 & 
+                                                      k$gene %in% enrichedGenes$gene,]$flag, 'E')
+  
   k[k$gene %in% abundantGenes$gene,]$flag <- paste0(k[k$gene %in% abundantGenes$gene,]$flag, 'A')
-  k[k$longitudinalSubjects >= 3 & k$longitudinalSites >= 3 & ! grepl('D', k$flag),]$flag <- paste0(k[k$longitudinalSubjects >= 3 & k$longitudinalSites >= 3 & ! grepl('D', k$flag),]$flag, 'L')
-
+  
+  k[k$longitudinalSubjects >= config$longitudinal_minNumSubjects & 
+    k$longitudinalSites >= config$longitudinal_minNumSites & 
+    k$longitudinalTimePoints >= config$longitudinal_minNumTimepoints &
+    ! grepl('D', k$flag),]$flag <- paste0(k[k$longitudinalSubjects >= config$longitudinal_minNumSubjects & 
+                                            k$longitudinalSites >= config$longitudinal_minNumSites & 
+                                            k$longitudinalTimePoints >= config$longitudinal_minNumTimepoints &
+                                            ! grepl('D', k$flag),]$flag, 'L')
   k[k$flag == '',]$flag <- 'none'
   k
 }
