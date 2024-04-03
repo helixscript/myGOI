@@ -115,10 +115,10 @@ setCategories <- function(k){
   
   k[k$longitudinalSubjects >= config$longitudinal_minNumSubjects & 
     k$longitudinalSites >= config$longitudinal_minNumSites & 
-    k$longitudinalTimePoints >= config$longitudinal_minNumTimepoints &
+ ###   k$longitudinalTimePoints >= config$longitudinal_minNumTimepoints &
     ! grepl('D', k$flag),]$flag <- paste0(k[k$longitudinalSubjects >= config$longitudinal_minNumSubjects & 
                                             k$longitudinalSites >= config$longitudinal_minNumSites & 
-                                            k$longitudinalTimePoints >= config$longitudinal_minNumTimepoints &
+                                  ###          k$longitudinalTimePoints >= config$longitudinal_minNumTimepoints &
                                             ! grepl('D', k$flag),]$flag, 'L')
   k[k$flag == '',]$flag <- 'none'
   k

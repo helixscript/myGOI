@@ -150,7 +150,7 @@ upSetPlot <- buildUpSetPlot()
 rmarkdown::render('myGOI.Rmd',
                   output_file = 'myGOI.pdf',
                   params = list('date'  = format(Sys.Date(), format="%B %d, %Y"),
-                                'title' = 'myGOI report',
+                                'title' = 'Gene of Interest Report (GOI)',
                                 'author' = 'CART research group'))
 
 
@@ -159,6 +159,6 @@ rmarkdown::render('myGOI.Rmd',
 # L_test <- bind_rows(lapply(k[grepl('L', k$flag),]$gene, function(x){
 #             o <- dplyr::filter(subset(d, nearestFeature == x), timePointDays >= config$longitudinal_minTimeDays)
 #             tibble(gene = x, numSubjects = n_distinct(o$patient), timePoints = n_distinct(o$timePointDays), sites = n_distinct(o$posid))
-#           })) 
+#           }))
 
 
