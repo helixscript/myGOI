@@ -7,7 +7,7 @@ longitudinal_minNumSubjects: 3
 longitudinal_minNumSites: 3
 longitudinal_minNumTimepoints: 3
 longitudinal_minTimeDays: 90
-volcanoPlot_numTopGeneLabels: 10
+volcanoPlot_numTopGeneLabels: 12
 COSMIC_oncogene_table: data/COSMIC_oncogenes.txt
 COSMIC_tsg_table: data/COSMIC_oncogenes_tumor_suppressors.txt
 allOnco_oncogene_table: data/allOnco.txt

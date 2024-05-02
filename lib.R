@@ -138,6 +138,10 @@ volcanoPlot <- function(k){
   o[[2]][(config$volcanoPlot_numTopGeneLabels+1):nrow(o[[2]]),]$geneLabel <- 'none'
   
   k <- bind_rows(o)
+  
+  # Update
+  k[k$flag == 'EAL',]$geneLabel <- k[k$flag == 'EAL',]$gene
+  
   flagLevels <- unique(k$flag)
   
   flagLevels <- flagLevels[flagLevels != 'none']
@@ -153,14 +157,17 @@ volcanoPlot <- function(k){
   
   k$geneLabel <- ifelse(k$geneLabel == 'none', '', k$geneLabel)
   
+  # Force label for current report -- move forced gene labels to config file.
+  k[k$gene == 'FOXP1',]$geneLabel <- 'FOXP1'
+  
   p <- volcanoPlot <- ggplot(subset(k, abs(percentChange) >= 2), aes(volcanoPlot_x, volcanoPlot_y, label = geneLabel, fill = flag)) + 
        scale_fill_manual(name = 'Class', values = colors, labels = flagLevels, drop = FALSE) +
        scale_x_continuous(limits = c(min(k$volcanoPlot_x - 3), max(k$volcanoPlot_x))) +
        scale_y_continuous(limits = c(-1, max(k$volcanoPlot_y+3))) +
        geom_hline(yintercept = log(1/0.05), color = 'black', linetype = 'dashed') +
        geom_jitter(position = jitter_pos, size = 2, shape = 21, alpha = 0.9) +  
-       geom_text_repel(position = jitter_pos, size = 3, point.size = 6, direction = 'both', seed = 1,
-                       max.overlaps = 15,  max.time = 5, max.iter = 5000) +
+       geom_text_repel(position = jitter_pos, size = 2, point.size = 2, direction = 'both', seed = 1,
+                       max.overlaps = Inf,  max.time = 10, max.iter = 50000) +
        labs(x = 'log2(percent gene integration frequency change)', y = 'log(1/p-value)') +
        theme(legend.position = "bottom",
              legend.key=element_blank(),
@@ -169,7 +176,5 @@ volcanoPlot <- function(k){
              panel.background = element_blank(), axis.line = element_line(colour = "black")) +
        guides(fill = guide_legend(override.aes = list(size=4)))
   
-  k$volcanoPlot_x <- NULL
-  k$volcanoPlot_y <- NULL
   p
 }

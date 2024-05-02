@@ -141,6 +141,7 @@ which suggests that integration near these genes bolsters cell survival.
 \vspace{0.25cm}
 
 ```{r Table2_legend, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+caption <- ''
 tab <- tibble(class = c('gene', 'subjects', 'earlyCount', 'lateCount', 'percentChange', 'pVal', 'pVal.adj', 'oncoGene', 'categories'),
               desc = c('Gene symbol.',
                        'Total number of subjects with an integration near gene.',
@@ -152,11 +153,10 @@ tab <- tibble(class = c('gene', 'subjects', 'earlyCount', 'lateCount', 'percentC
                         "Gene is found in a broad lists of oncogenes.",
                         "DEAL categories associated with gene."))
 
-kable(tab, "latex", align="rl", linesep = "", booktabs=T, escape = F, col.names = NULL) %>%
+kable(tab, "latex", align="rl", linesep = "", booktabs=T, escape = F, col.names = NULL, caption = caption) %>%
   kable_styling(latex_options = c("hold_position"), font_size = 10)
 ```
 
-\vspace{0.5cm}
 
 ```{r, E_table, echo=FALSE, message=FALSE, warning=FALSE}
 caption <- 'Table C. Top 100 enriched genes. p-Values are marked with an * if $\\leq$ 0.05.'
@@ -183,6 +183,7 @@ which suggests that integration near these genes may be detrimental to cell surv
 \vspace{0.25cm}
 
 ```{r Table3_legend, echo=FALSE, message=FALSE, warning=FALSE}
+caption <- ''
 tab <- tibble(class = c('gene', 'subjects', 'earlyCount', 'lateCount', 'percentChange', 'pVal', 'pVal.adj', 'oncoGene', 'categories'),
               desc = c('Gene symbol.',
                        'Total number of subjects with an integration near gene.',
@@ -194,11 +195,9 @@ tab <- tibble(class = c('gene', 'subjects', 'earlyCount', 'lateCount', 'percentC
                         "Gene is found in a broad lists of oncogenes.",
                         "DEAL categories associated with gene."))
 
-kable(tab, "latex", align="rl", linesep = "", booktabs=T, escape = F, col.names = NULL) %>%
+kable(tab, "latex", align="rl", linesep = "", booktabs=T, escape = F, col.names = NULL, caption = caption) %>%
   kable_styling(latex_options = c("hold_position"), font_size = 10)
 ```
-
-\vspace{0.5cm}
 
 ```{r, D_table, echo=FALSE, message=FALSE, warning=FALSE}
 caption <- 'Table D. Top 100 depleated genes. p-Values are marked with an * if $\\leq$ 0.05.'
@@ -225,6 +224,7 @@ threshold for inclusion is an estimated abundances $\geq$ `r currentAbundantCate
 \vspace{0.25cm}
 
 ```{r Table4_legend, echo=FALSE, message=FALSE, warning=FALSE}
+caption <- ''
 tab <- tibble(class = c('gene', 'subjects', 'lateCount', 'maxAbund', 'maxRelAbund', 'oncoGene', 'categories'),
               desc = c('Gene symbol.',
                        'Total number of subjects with an integration near gene.',
@@ -234,11 +234,9 @@ tab <- tibble(class = c('gene', 'subjects', 'lateCount', 'maxAbund', 'maxRelAbun
                         "Gene is found in a broad lists of oncogenes.",
                         "DEAL categories associated with gene."))
 
-kable(tab, "latex", align="rl", linesep = "", booktabs=T, escape = F, col.names = NULL) %>%
+kable(tab, "latex", align="rl", linesep = "", booktabs=T, escape = F, col.names = NULL, caption = caption) %>%
   kable_styling(latex_options = c("hold_position"), font_size = 10)
 ```
-
-\vspace{0.5cm}
 
 ```{r, A_table, echo=FALSE, message=FALSE, warning=FALSE}
 caption <- 'Table E. Top 100 abundant genes.'
@@ -261,6 +259,7 @@ Genes are categorized as Longitudinal if $\geq$ `r config$longitudinal_minNumSub
 \vspace{0.25cm}
 
 ```{r, L_legend, echo=FALSE, message=FALSE, warning=FALSE, results='asis'}
+caption <- ''
 tab <- tibble(class = c('gene', 'totalSites', 'longitudinalSites', 'longitudinalSubjects', 'longitudinalTimePoints', 'latestTimePointDays', 'oncoGene', 'categories'),
               desc = c('Gene symbol.',
                        'Total number of unique integrations associated with gene.',  
@@ -274,11 +273,9 @@ tab <- tibble(class = c('gene', 'totalSites', 'longitudinalSites', 'longitudinal
                         "Gene is found in a broad lists of oncogenes.",
                         "DEAL categories associated with gene."))
 
-kable(tab, "latex", align="rl", linesep = "", booktabs=T, escape = F, col.names = NULL) %>%
+kable(tab, "latex", align="rl", linesep = "", booktabs=T, escape = F, col.names = NULL, caption = caption) %>%
   kable_styling(latex_options = c("hold_position"), font_size = 10)
 ```
-
-\vspace{0.5cm}
 
 ```{r, L_table, echo=FALSE, message=FALSE, warning=FALSE}
 caption <- 'Table F. Top 100 longitudinaly persistant genes.'
@@ -294,6 +291,23 @@ kable(tab, format = "latex", align='c', linesep = "", booktabs = T, row.names = 
 
 \newpage
 
+# Volcano plot analysis
+
+Changes in gene integration frequencies between pre- and post- transfusion samples and their significance is 
+shown below in Figure 2. Changes in integration frequency is defined as *(f - fo) / fo* where *f* is the integration 
+frequency post-transfusion and *fo* is the integration of preinfused transduction material. The significance of these 
+changes is assessed using Fisher's Exact tests  corrected for multiple comparisons.
+
+
+\vspace{0.50cm}
+
+Figure 2.  
+
+```{r, correctedVolcanoPlot, echo=FALSE, message=FALSE, warning=FALSE, fig.height=8, cache=TRUE}
+pValAdjVolcanoPlot
+```
+
+\newpage
 ## References
 
 1. Denlinger N, Bond D, Jaglowski S. CAR T-cell therapy for B-cell lymphoma. Curr Probl Cancer. 
